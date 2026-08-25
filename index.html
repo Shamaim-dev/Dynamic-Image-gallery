@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Immersive Dynamic Image Gallery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ===== Theme tokens ===== */
+  :root {
+    --bg: #F4F4F7;
+    --surface: #FFFFFF;
+    --accent: #2563EB;
+    --accent-soft: rgba(37, 99, 235, 0.12);
+    --tag: #0D9488;
+    --text: #111827;
+    --border: #111827;
+    --shadow: 4px 4px 0px #111827;
+  }
+
+  [data-theme="dark"] {
+    --bg: #121824;
+    --surface: #1E293B;
+    --accent: #3B82F6;
+    --accent-soft: rgba(59, 130, 246, 0.15);
+    --tag: #14B8A6;
+    --text: #F9FAFB;
+    --border: #F9FAFB;
+    --shadow: 4px 4px 0px #F9FAFB;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  h1, h2, .pill, .card-title { font-family: 'Space Grotesk', sans-serif; }
+
+  /* ===== Header ===== */
+  .hero {
+    padding: 40px 24px 24px;
+    text-align: center;
+    position: relative;
+  }
+
+  .hero h1 {
+    font-size: clamp(26px, 5vw, 42px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .hero p {
+    margin-top: 6px;
+    opacity: 0.65;
+    font-size: 14px;
+  }
+
+  .theme-toggle {
+    position: absolute;
+    top: 36px;
+    right: 24px;
+    width: 42px;
+    height: 42px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    font-size: 17px;
+  }
+  .theme-toggle:active { box-shadow: none; transform: translate(4px, 4px); }
+
+  /* ===== Sticky search + filter bar ===== */
+  .controls {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    padding: 14px 24px 18px;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .search-row {
+    max-width: 600px;
+    margin: 0 auto 14px;
+    position: relative;
+  }
+
+  .search-row svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  #searchInput {
+    width: 100%;
+    padding: 12px 14px 12px 42px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    outline: none;
+  }
+  #searchInput:focus { box-shadow: var(--shadow); }
+
+  .tabs {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .pill {
+    padding: 8px 18px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .pill:hover { transform: translateY(-2px); }
+
+  .pill[aria-selected="true"] {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: var(--shadow);
+  }
+
+  /* ===== Gallery grid ===== */
+  .gallery {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 22px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    cursor: pointer;
+    transition: opacity 0.25s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* Hover: lift + stronger shadow glow */
+  .card:hover, .card:focus-visible {
+    transform: translate(-3px, -3px);
+    box-shadow: 7px 7px 0px var(--accent);
+    outline: none;
+  }
+
+  /* Cards hidden by filtering fade + shrink out instead of instantly disappearing */
+  .card.is-hidden {
+    opacity: 0;
+    transform: scale(0.85);
+    pointer-events: none;
+    position: absolute;
+    visibility: hidden;
+  }
+
+  .card-img-wrap {
+    width: 100%;
+    height: 210px;
+    overflow: hidden;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .card-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.4s ease;
+  }
+
+  .card:hover .card-img-wrap img { transform: scale(1.1); }
+
+  .card-body { padding: 14px 16px 16px; }
+
+  .card-title { font-size: 16px; font-weight: 600; }
+
+  .badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 11px;
+    background: var(--tag);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    opacity: 0.6;
+  }
+
+  /* ===== Lightbox modal ===== */
+  .lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    padding: 20px;
+  }
+
+  .lightbox-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+  .lightbox {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    box-shadow: 8px 8px 0px var(--border);
+    max-width: 780px;
+    width: 100%;
+    max-height: 88vh;
+    overflow: hidden;
+    transform: scale(0.92);
+    transition: transform 0.25s ease;
+    position: relative;
+  }
+
+  .lightbox-overlay.is-open .lightbox { transform: scale(1); }
+
+  .lightbox-img-wrap { width: 100%; max-height: 56vh; background: #000; }
+
+  .lightbox-img-wrap img {
+    width: 100%;
+    height: 100%;
+    max-height: 56vh;
+    object-fit: contain;
+    display: block;
+  }
+
+  .lightbox-info {
+    padding: 18px 22px;
+    border-top: 2px solid var(--border);
+  }
+
+  .lightbox-info h2 { font-size: 19px; margin-bottom: 6px; }
+
+  .lightbox-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .lightbox-close:hover { background: var(--accent); color: #fff; }
+
+  @media (max-width: 480px) {
+    .theme-toggle { top: 18px; right: 16px; width: 38px; height: 38px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<header class="hero">
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">☀</button>
+  <h1>Immersive Gallery</h1>
+  <p>Search, filter, and explore the collection.</p>
+</header>
+
+<!-- ===== Sticky search + category tabs ===== -->
+<div class="controls">
+  <div class="search-row">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <input type="text" id="searchInput" placeholder="Search by title or tag…" aria-label="Search gallery">
+  </div>
+  <div class="tabs" id="tabList" role="tablist" aria-label="Category filters">
+    <button class="pill" role="tab" aria-selected="true" data-category="all">All</button>
+    <button class="pill" role="tab" aria-selected="false" data-category="nature">Nature</button>
+    <button class="pill" role="tab" aria-selected="false" data-category="architecture">Architecture</button>
+    <button class="pill" role="tab" aria-selected="false" data-category="tech">Tech</button>
+  </div>
+</div>
+
+<!-- ===== Gallery grid (populated by JS) ===== -->
+<main class="gallery" id="gallery" aria-live="polite"></main>
+
+<!-- ===== Lightbox modal ===== -->
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <div class="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightboxTitle">
+    <button class="lightbox-close" id="lightboxClose" aria-label="Close">✕</button>
+    <div class="lightbox-img-wrap">
+      <img id="lightboxImg" src="" alt="">
+    </div>
+    <div class="lightbox-info">
+      <h2 id="lightboxTitle"></h2>
+      <span class="badge" id="lightboxBadge"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Image data ----------
+  // Each item has: id (used for the placeholder image), title, category, and tags for search matching
+  const images = [
+    { id: 10,   title: 'Misty Pine Ridge',        category: 'nature',       tags: ['forest', 'mountains', 'fog'] },
+    { id: 1015, title: 'River Through the Valley', category: 'nature',       tags: ['river', 'valley', 'green'] },
+    { id: 1016, title: 'Golden Hour Meadow',       category: 'nature',       tags: ['meadow', 'sunset', 'field'] },
+    { id: 1018, title: 'Alpine Lake Reflection',   category: 'nature',       tags: ['lake', 'mountains', 'blue'] },
+    { id: 1031, title: 'Glass Facade Tower',       category: 'architecture', tags: ['building', 'glass', 'city'] },
+    { id: 1040, title: 'Modern Concrete Lines',    category: 'architecture', tags: ['concrete', 'minimal', 'lines'] },
+    { id: 1048, title: 'Urban Staircase Study',    category: 'architecture', tags: ['stairs', 'geometry', 'urban'] },
+    { id: 1050, title: 'Skyline at Dusk',          category: 'architecture', tags: ['skyline', 'dusk', 'city'] },
+    { id: 1060, title: 'Circuit Board Macro',      category: 'tech',         tags: ['circuit', 'electronics', 'macro'] },
+    { id: 1074, title: 'Workstation Setup',        category: 'tech',         tags: ['desk', 'keyboard', 'workspace'] },
+    { id: 1080, title: 'Server Rack Detail',       category: 'tech',         tags: ['server', 'data', 'network'] },
+    { id: 1084, title: 'Robotic Arm Prototype',    category: 'tech',         tags: ['robotics', 'engineering', 'lab'] }
+  ];
+
+  // Current filter state
+  let activeCategory = 'all';
+  let searchQuery = '';
+  let filteredList = [...images];
+
+  // ---------- DOM references ----------
+  const galleryEl = document.getElementById('gallery');
+  const searchInput = document.getElementById('searchInput');
+  const tabList = document.getElementById('tabList');
+  const themeToggle = document.getElementById('themeToggle');
+
+  const lightboxOverlay = document.getElementById('lightboxOverlay');
+  const lightboxImg = document.getElementById('lightboxImg');
+  const lightboxTitle = document.getElementById('lightboxTitle');
+  const lightboxBadge = document.getElementById('lightboxBadge');
+  const lightboxClose = document.getElementById('lightboxClose');
+
+  let lastFocusedEl = null; // remembers what to focus when the modal closes
+
+  // ---------- Helper: build a placeholder image URL ----------
+  function imgUrl(id, w, h) {
+    return `https://picsum.photos/id/${id}/${w}/${h}`;
+  }
+
+  // ---------- Render the gallery grid from the current filteredList ----------
+  function renderGallery() {
+    galleryEl.innerHTML = '';
+
+    if (filteredList.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'No images match your search. Try a different term or category.';
+      galleryEl.appendChild(empty);
+      return;
+    }
+
+    filteredList.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.tabIndex = 0; // keyboard-focusable
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', `Open ${item.title} in full view`);
+      card.dataset.id = item.id;
+
+      card.innerHTML = `
+        <div class="card-img-wrap">
+          <img src="${imgUrl(item.id, 500, 380)}" alt="${item.title}" loading="lazy">
+        </div>
+        <div class="card-body">
+          <div class="card-title">${item.title}</div>
+          <span class="badge">${item.category}</span>
+        </div>
+      `;
+
+      // Click OR Enter/Space opens the lightbox
+      card.addEventListener('click', () => openLightbox(item.id));
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openLightbox(item.id);
+        }
+      });
+
+      galleryEl.appendChild(card);
+    });
+  }
+
+  // ---------- Combined search + category filtering ----------
+  function applyFilters() {
+    filteredList = images.filter(item => {
+      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+      const q = searchQuery.trim().toLowerCase();
+      const matchesSearch = q === '' ||
+        item.title.toLowerCase().includes(q) ||
+        item.tags.some(tag => tag.toLowerCase().includes(q)) ||
+        item.category.toLowerCase().includes(q);
+      return matchesCategory && matchesSearch;
+    });
+    renderGallery();
+  }
+
+  // Live search — filters on every keystroke, no page reload
+  searchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    applyFilters();
+  });
+
+  // Category tab clicks
+  tabList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pill');
+    if (!btn) return;
+    tabList.querySelectorAll('.pill').forEach(p => p.setAttribute('aria-selected', 'false'));
+    btn.setAttribute('aria-selected', 'true');
+    activeCategory = btn.dataset.category;
+    applyFilters();
+  });
+
+  // ---------- Lightbox open/close ----------
+  function openLightbox(id) {
+    const item = images.find(img => img.id === id);
+    if (!item) return;
+
+    lastFocusedEl = document.activeElement; // remember for focus-return on close
+
+    lightboxImg.src = imgUrl(item.id, 900, 650);
+    lightboxImg.alt = item.title;
+    lightboxTitle.textContent = item.title;
+    lightboxBadge.textContent = item.category;
+
+    lightboxOverlay.classList.add('is-open');
+    document.body.style.overflow = 'hidden'; // prevent background scroll
+    lightboxClose.focus();
+  }
+
+  function closeLightbox() {
+    lightboxOverlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+    if (lastFocusedEl) lastFocusedEl.focus(); // return focus to the card that opened it
+  }
+
+  // Close via the X button
+  lightboxClose.addEventListener('click', closeLightbox);
+
+  // Close by clicking the darkened backdrop (but not the modal itself)
+  lightboxOverlay.addEventListener('click', (e) => {
+    if (e.target === lightboxOverlay) closeLightbox();
+  });
+
+  // Close via Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lightboxOverlay.classList.contains('is-open')) {
+      closeLightbox();
+    }
+  });
+
+  // ---------- Dark/Light theme toggle ----------
+  themeToggle.addEventListener('click', () => {
+    const isDark = document.body.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      document.body.removeAttribute('data-theme');
+      themeToggle.textContent = '☀';
+    } else {
+      document.body.setAttribute('data-theme', 'dark');
+      themeToggle.textContent = '🌙';
+    }
+  });
+
+  // ---------- Initial render ----------
+  applyFilters();
+})();
+</script>
+</body>
+</html>
