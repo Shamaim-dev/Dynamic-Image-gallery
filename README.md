@@ -24,4 +24,4 @@ frameworks or dependencies.
 No installation, build tools, or dependencies are required — the entire 
 app runs client-side from a single HTML file.
 
-Live demo: https://Shamaim-dev.github.io/Dynamic-Image-gallery_/
+Live demo: https://github.com/Shamaim-dev/Dynamic-Image-gallery.git
