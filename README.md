@@ -1,5 +1,5 @@
 # 🖼️ Immersive Dynamic Image Gallery
-live Demo: https://Shamaim-dev.github.io/Dynamic-Image-gallery/
+live Demo: https://shamaim-dev.github.io/Dynamic-Image-gallery/
 
 ---
 
